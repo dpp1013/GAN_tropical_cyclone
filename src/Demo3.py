@@ -14,29 +14,66 @@ import numpy as np
 from torchsummary import summary
 
 
+def crop_center(img, cropx, cropy):
+    # print(img.shape)
+    # print(np.typename(img))
+    img = img.astype(np.float32)
+    img = np.reshape(img, (301, 301))
+    y, x = img.shape
+    startx = x // 2 - (cropx // 2)
+    starty = y // 2 - (cropy // 2)
+    return np.reshape(img[starty:starty + cropy, startx:startx + cropx], (1, cropx, cropy)).astype("float")
+
+
 class DealDataset(Dataset):
     """
         下载数据、初始化数据，都可以在这里完成
     """
 
-    def __init__(self, file, l):
+    def __init__(self, file, lat_file, lon_file, l):
         self.l = l
         self.file = file
+        self.lat_file = lat_file
+        self.lon_file = lon_file
         self.data = None
+        self.lat_data = None
+        self.lon_data = None
 
     def __getitem__(self, index):
         if self.data is None:
             self.data = np.load(self.file)
-        return self.data[index:index + 1], self.data[index + 1:index + 2]
+        if self.lat_data is None:
+            self.lat_data = np.load(self.lat_file)
+        if self.lon_data is None:
+            self.lon_data = np.load(self.lon_file)
+        # print("data_shape", self.data[index:index + 1].shape)
+        # print("lat_data_shape", self.lat_data[index:index + 1].shape)
+        return np.vstack([
+            crop_center(self.data[index:index + 1], opt.img_size, opt.img_size),
+            crop_center(self.lat_data[index:index + 1], opt.img_size, opt.img_size),
+            crop_center(self.lon_data[index:index + 1], opt.img_size, opt.img_size)
+        ]).astype(np.float32), np.vstack([
+            crop_center(self.data[index + 1:index + 2], opt.img_size, opt.img_size),
+            crop_center(self.lat_data[index + 1:index + 2], opt.img_size, opt.img_size),
+            crop_center(self.lon_data[index + 1:index + 2], opt.img_size, opt.img_size),
+        ]).astype(np.float32)
 
     def __len__(self):
         return self.l - 1
 
 
+lat_lon_data_dir = "/Volumes/董萍萍 18655631746/my_data_set/new_data_lat_lon"
+
+
 def gen_data_set(data_dir):
     result = []
     for file_name in os.listdir(data_dir):
-        result.append(DealDataset(os.path.join(data_dir, file_name), int(file_name.split('_')[0])))
+        seq = file_name.split('_')
+        # 3_1979167N13071__lat.npy
+        lat_chanel = os.path.join(lat_lon_data_dir, "%s_%s__lat.npy" % (seq[0], seq[1]))
+        lon_chanel = os.path.join(lat_lon_data_dir, "%s_%s__lon.npy" % (seq[0], seq[1]))
+
+        result.append(DealDataset(os.path.join(data_dir, file_name), lat_chanel, lon_chanel, int(seq[0])))
     return ConcatDataset(result)
 
 
@@ -44,17 +81,17 @@ os.makedirs("img", exist_ok=True)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--n_epochs", type=int, default=200, help="number of epochs of training")
-parser.add_argument("--batch_size", type=int, default=1, help="size of the batches")
+parser.add_argument("--batch_size", type=int, default=64, help="size of the batches")
 parser.add_argument("--lr", type=float, default=0.0002, help="adam: learning rate")
 parser.add_argument("--b1", type=float, default=0.5, help="adam: decay of first order momentum of gradient")
 parser.add_argument("--b2", type=float, default=0.999, help="adam: decay of first order momentum of gradient")
 parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
 parser.add_argument("--latent_dim", type=int, default=100, help="dimensionality of the latent space")
-parser.add_argument("--img_size", type=int, default=301, help="size of each image dimension")
-parser.add_argument("--channels", type=int, default=1, help="number of image channels")
+parser.add_argument("--img_size", type=int, default=32, help="size of each image dimension")
+parser.add_argument("--channels", type=int, default=3, help="number of image channels")
 parser.add_argument("--sample_interval", type=int, default=400, help="interval between image sampling")
 opt = parser.parse_args()
-# print(opt)
+print(opt)
 
 cuda = True if torch.cuda.is_available() else False
 
@@ -73,27 +110,27 @@ class Generator(nn.Module):
         super(Generator, self).__init__()
 
         self.init_size = opt.img_size // 4
-        self.l1 = nn.Sequential(nn.Linear(301*301, 301 * 301))
+        self.l1 = nn.Sequential(nn.Linear(32 * 32 * opt.channels, 128 * self.init_size ** 2))
 
         self.conv_blocks = nn.Sequential(
-            nn.BatchNorm2d(301),
-            # nn.Upsample(scale_factor=1),
-            nn.Conv2d(301, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(301, 0.8),
+            nn.BatchNorm2d(128),
+            nn.Upsample(scale_factor=2),
+            nn.Conv2d(128, 128, 3, stride=1, padding=1),
+            nn.BatchNorm2d(128, 0.8),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Upsample(scale_factor=2),
-            nn.Conv2d(602, kernel_size=5, stride=1, padding=1),
-            nn.BatchNorm2d(600, 0.8),
+            nn.Conv2d(128, 64, 3, stride=1, padding=1),
+            nn.BatchNorm2d(64, 0.8),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(600, opt.channels, 3, stride=2, padding=1),
-            nn.Tanh()
+            nn.Conv2d(64, opt.channels, 3, stride=1, padding=1),
+            nn.Tanh(),
         )
-        print(summary(self, (1, 301, 301)))
 
     def forward(self, z):
-        print('forward z', z.shape)
         out = self.l1(z)
-        out = out.view(301, 301, self.init_size, self.init_size)
+        # out.shape torch.Size([64, 8192])
+        # print("out.shape", out.shape)
+        out = out.view(out.shape[0], 128, self.init_size, self.init_size)
         img = self.conv_blocks(out)
         return img
 
@@ -132,6 +169,8 @@ adversarial_loss = torch.nn.BCELoss()
 
 # Initialize generator and discriminator
 generator = Generator()
+# summary(generator, (1, 100))
+
 discriminator = Discriminator()
 
 if cuda:
@@ -145,20 +184,9 @@ discriminator.apply(weights_init_normal)
 
 # Configure data loader
 # os.makedirs("../../data/mnist", exist_ok=True)
-dataloader = torch.utils.data.DataLoader(
-    # datasets.MNIST(
-    #     root='./data',
-    #     train=True,
-    #     download=True,
-    #     transform=transforms.Compose(
-    #         [transforms.Resize(opt.img_size), transforms.ToTensor(), transforms.Normalize([0.5], [0.5])]
-    #     ),
-    # ),
-    gen_data_set('./data/new_data_norm'),
-    batch_size=opt.batch_size,
-    shuffle=True,
-)
 
+dataloader = torch.utils.data.DataLoader(gen_data_set('./data/new_data_norm'), batch_size=opt.batch_size,
+                                         shuffle=True, )
 # Optimizers
 optimizer_G = torch.optim.Adam(generator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
 optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
@@ -170,15 +198,16 @@ Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 # ----------
 
 for epoch in range(opt.n_epochs):
-    for i, (imgs, z) in enumerate(dataloader):
-        print('imgs shape',imgs.shape)
-        print('z shape',z.shape)
+    for i, (imgs, next_imgs) in enumerate(dataloader):
+        # print(imgs.shape)
         # Adversarial ground truths
         valid = Variable(Tensor(imgs.shape[0], 1).fill_(1.0), requires_grad=False)
         fake = Variable(Tensor(imgs.shape[0], 1).fill_(0.0), requires_grad=False)
-
         # Configure input
-        real_imgs = Variable(imgs.type(Tensor))
+        # print(next_imgs.dtype)
+        # print(next_imgs.shape)
+        t = Tensor(next_imgs)
+        real_imgs = Variable(t)
 
         # -----------------
         #  Train Generator
@@ -187,8 +216,9 @@ for epoch in range(opt.n_epochs):
         optimizer_G.zero_grad()
 
         # Sample noise as generator input
-        # z = Variable(Tensor(np.random.normal(0, 1, (imgs.shape[0], opt.latent_dim))))
-        # z shape (32,100)
+        # print('imgs.shape', imgs.shape)
+        z = Variable(Tensor(np.reshape(imgs, (imgs.shape[0], opt.channels * 32 * 32))))
+        # print('z shape:', z.shape)
 
         # Generate a batch of images
         gen_imgs = generator(z)
@@ -219,5 +249,10 @@ for epoch in range(opt.n_epochs):
         )
 
         batches_done = epoch * len(dataloader) + i
+        # if batches_done % opt.sample_interval == 0:
+        #     for img in gen_imgs.data:
+        #         save_image(gen_imgs.data, "img/%d_gen.png" % batches_done, nrow=1, normalize=True)
+        #         save_image(real_imgs, "img/%d_real.png" % batches_done, nrow=1, normalize=True)
         if batches_done % opt.sample_interval == 0:
-            save_image(gen_imgs.data[:25], "img/%d.png" % batches_done, nrow=5, normalize=True)
+            save_image(gen_imgs.data, "img/%d_gen.png" % batches_done, nrow=8, normalize=True)
+            save_image(real_imgs, "img/%d_real.png" % batches_done, nrow=8, normalize=True)

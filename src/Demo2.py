@@ -66,6 +66,7 @@ class Generator(nn.Module):
 
     def forward(self, z):
         out = self.l1(z)
+        print("out.shape", out.shape)
         out = out.view(out.shape[0], 128, self.init_size, self.init_size)
         img = self.conv_blocks(out)
         return img
@@ -145,7 +146,7 @@ Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 
 for epoch in range(opt.n_epochs):
     for i, (imgs, _) in enumerate(dataloader):
-
+        print(imgs.shape)
         # Adversarial ground truths
         valid = Variable(Tensor(imgs.shape[0], 1).fill_(1.0), requires_grad=False)
         fake = Variable(Tensor(imgs.shape[0], 1).fill_(0.0), requires_grad=False)
