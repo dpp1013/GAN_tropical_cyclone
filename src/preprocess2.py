@@ -1,4 +1,6 @@
-'''
+"""
+提取nc文件中的
+"""'''
 对原始数据进行归一化操作，并变成1-1的训练数据形式
 '''
 import os
@@ -48,6 +50,7 @@ def read_nc_single(path):
     '''
     data_lat = None
     data_lon = None
+    irwin = None
     Lat_lon = np.ones((301, 301))
     for fileName in os.listdir(path):
         length = len(os.listdir(path))
@@ -57,6 +60,7 @@ def read_nc_single(path):
         f = nc.Dataset(fileName)
         Lat = f.variables['lat'][:]  # 横向
         Lon = f.variables['lon'][:]
+        win = f.variables['IRWIN'][:]
         Lat = Lat * Lat_lon
         Lon = np.transpose(Lon * Lat_lon)
         if data_lat is None:
@@ -67,14 +71,21 @@ def read_nc_single(path):
             data_lon = Lon
         else:
             data_lon = np.concatenate((data_lon, Lon))
+        if irwin is None:
+            irwin = Image_normalizeration(win)
+        else:
+            irwin = np.concatenate((irwin, Image_normalizeration(win)))
         f.close()
     data_lon = data_lon.reshape((-1, 301, 301))
     data_lat = data_lat.reshape((-1, 301, 301))
     print(data_lat.shape, data_lon.shape)
     data_lat = Image_normalizeration(data_lat)
     data_lon = Image_normalizeration(data_lon)
-    np.save("%s_%s" % (newFileName, '_lat.npy'), np.array(data_lat))
-    np.save("%s_%s" % (newFileName, '_lon.npy'), np.array(data_lon))
+    print("data_lat", data_lat.shape)
+    print("data_lon", data_lon.shape)
+    print("irwin", irwin.shape)
+    # np.save("%s_%s" % (newFileName, '_lat.npy'), np.array(data_lat))
+    # np.save("%s_%s" % (newFileName, '_lon.npy'), np.array(data_lon))
 
 
 # 压缩处理完文件后，删除解压后的文件
@@ -102,5 +113,5 @@ def readFile(path):
 
 
 if __name__ == '__main__':
-    path = r'D:\my_data_set\data'
+    path = '/Volumes/董萍萍 18655631746/my_data_set/data'
     readFile(path)
