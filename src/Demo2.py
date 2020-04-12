@@ -166,6 +166,7 @@ for epoch in range(opt.n_epochs):
 
         # Generate a batch of images
         gen_imgs = generator(z)
+        print('gen_imgs shape', gen_imgs.shape)
 
         # Loss measures generator's ability to fool the discriminator
         g_loss = adversarial_loss(discriminator(gen_imgs), valid)

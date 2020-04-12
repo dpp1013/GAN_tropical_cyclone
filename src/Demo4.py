@@ -177,7 +177,6 @@ class Discriminator(nn.Module):
         out = self.model(img)
         out = out.view(out.shape[0], -1)
         validity = self.adv_layer(out)
-
         return validity
 
 
