@@ -9,9 +9,11 @@ import tarfile
 import stat
 import netCDF4 as nc
 
+origin_data_path = "D:\my_data_set\data"
+save_data_path = r"D:\my_data_set\single_data"
+
 
 def Image_normalizeration(Image):
-    print(Image.shape)
     x_norm = None
     for i in range(len(Image)):
         i = Image[i, :, :]
@@ -22,7 +24,6 @@ def Image_normalizeration(Image):
             x_norm = image_norm
         else:
             x_norm = np.concatenate((x_norm, image_norm))
-    print(x_norm.shape)
     return x_norm
 
 
@@ -51,11 +52,11 @@ def read_nc_single(path):
     data_lat = None
     data_lon = None
     irwin = None
+    result = None
     Lat_lon = np.ones((301, 301))
+    length = len(os.listdir(path))
+    newFileName = os.path.join(save_data_path, str(length) + '_' + os.path.basename(path) + '.npy')
     for fileName in os.listdir(path):
-        length = len(os.listdir(path))
-        newFileName = str(length) + '_' + fileName.split('.')[0]
-        newFileName = os.path.join(r'D:\my_data_set\new_data_lat_lon', newFileName)
         fileName = os.path.join(path, fileName)
         f = nc.Dataset(fileName)
         Lat = f.variables['lat'][:]  # 横向
@@ -63,27 +64,18 @@ def read_nc_single(path):
         win = f.variables['IRWIN'][:]
         Lat = Lat * Lat_lon
         Lon = np.transpose(Lon * Lat_lon)
-        if data_lat is None:
-            data_lat = Lat
+        Lat = Lat.reshape((-1, 301, 301))
+        Lon = Lon.reshape((-1, 301, 301))
+        single = np.vstack((win, Lat, Lon))
+        single = single.reshape((-1, 3, 301, 301))
+        if result is None:
+            result = single
         else:
-            data_lat = np.concatenate((data_lat, Lat))
-        if data_lon is None:
-            data_lon = Lon
-        else:
-            data_lon = np.concatenate((data_lon, Lon))
-        if irwin is None:
-            irwin = Image_normalizeration(win)
-        else:
-            irwin = np.concatenate((irwin, Image_normalizeration(win)))
+            result = np.concatenate((result, single))
         f.close()
-    data_lon = data_lon.reshape((-1, 301, 301))
-    data_lat = data_lat.reshape((-1, 301, 301))
-    print(data_lat.shape, data_lon.shape)
-    data_lat = Image_normalizeration(data_lat)
-    data_lon = Image_normalizeration(data_lon)
-    print("data_lat", data_lat.shape)
-    print("data_lon", data_lon.shape)
-    print("irwin", irwin.shape)
+    print("result", result.shape)
+    print("save as:", newFileName)
+    np.save(newFileName, np.array(result))
     # np.save("%s_%s" % (newFileName, '_lat.npy'), np.array(data_lat))
     # np.save("%s_%s" % (newFileName, '_lon.npy'), np.array(data_lon))
 
@@ -101,17 +93,15 @@ def readFile(path):
     :param path: 初始文件夹path
     :return:
     '''
-    i = 1
-    for fileName in os.listdir(path):
-        i += 1
-        if i > 100:
-            break
+    dir_list = os.listdir(path)
+    for i in range(len(dir_list)):
+        fileName = dir_list[i]
         filePath = os.path.join(path, fileName)
         target_path = targz_file(filePath)  # 解压文件
         read_nc_single(target_path)  # 读取压缩后的文件
         remove(target_path)  # 删除处理后的文件夹
+        print("进度:", i, '/', len(dir_list))
 
 
 if __name__ == '__main__':
-    path = '/Volumes/董萍萍 18655631746/my_data_set/data'
-    readFile(path)
+    readFile(origin_data_path)
