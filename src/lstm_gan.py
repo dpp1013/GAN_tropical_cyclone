@@ -22,7 +22,8 @@ b1 = 0.5  # adam: decay of first order momentum of gradient
 b2 = 0.999  # adam: decay of first order momentum of gradient
 sample_interval = 1000
 
-origin_data_dir = "/Volumes/董萍萍 18655631746/my_data_set/tran_data"
+origin_data_dir = r"D:\my_data_set\tran_data"
+save_data_dir = r"D:\my_data_set\imgs"
 
 
 class Generator(nn.Module):
@@ -122,7 +123,7 @@ if __name__ == "__main__":
             fake = Variable(Tensor(x.shape[0], 1).fill_(0.0), requires_grad=False)
             optimizer_G.zero_grad()
             out = generator(x)
-            out = out.view((batch_size, channels, image_size, image_size))
+            out = out.view((out.shape[0], channels, image_size, image_size))
             d_out = discriminator(out)
             g_loss = adversarial_loss(d_out.double(), valid)
             g_loss.backward()
@@ -133,7 +134,7 @@ if __name__ == "__main__":
             optimizer_D.zero_grad()
             # Measure discriminator's ability to classify real from generated samples
             real_loss = adversarial_loss(
-                discriminator(y.float().view((batch_size, channels, image_size, image_size))), valid.float())
+                discriminator(y.float().view((y.shape[0], channels, image_size, image_size))), valid.float())
             fake_loss = adversarial_loss(
                 discriminator(out.detach()),
                 fake.float())
@@ -148,8 +149,10 @@ if __name__ == "__main__":
 
             batches_done = epoch * len(data_loader) + i
             if batches_done % sample_interval == 0:
-                # out.data.shape = (batch_size,chanels,image_size,image_size)
-                save_image(out.data[:, 0:1, ::], "img/%d_gen.png" % batches_done, nrow=8, normalize=True)
-                save_image(y.view((batch_size, channels, image_size, image_size))[:, 0:1, ::],
-                           "img/%d_real.png" % batches_done,
+                save_image(out.data[:, 0:1, ::], os.path.join(save_data_dir, "%d_gen.png" % batches_done), nrow=8,
+                           normalize=True)
+                save_image(y.view((y.shape[0], channels, image_size, image_size))[:, 0:1, ::],
+                           os.path.join(save_data_dir, "%d_real.png" % batches_done),
                            nrow=8, normalize=True)
+                np.save(os.path.join(save_data_dir, "%d_gen.npy" % batches_done), out.data)
+                np.save(os.path.join(save_data_dir, "%d_real.npy" % batches_done), y.data)
