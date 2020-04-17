@@ -4,7 +4,7 @@ import os
 
 def getFile(path):
     data = np.load(path)
-    data = data.reshape((8, 3, 32, 32))
+    data = data.reshape((batch, 3, 32, 32))
     data = data[:, 1:3, 15:16, 15:16]
     return data
 
@@ -18,6 +18,7 @@ def Mae(real, gen):
 
 
 if __name__ == '__main__':
+    batch = 64
     count, allLat, allLon = 0, 0, 0
     path = r'D:\my_data_set\imgs'
     files = os.listdir(r'D:\my_data_set\imgs')
@@ -32,9 +33,9 @@ if __name__ == '__main__':
         count += 1
         Lat = result[:, 0:1, :, :]
         Lon = result[:, 1:2, :, :, ]
-        # print(sum(Lat) / 8, sum(Lon) / 8)
-        allLat += sum(Lat) / 8
-        allLon += sum(Lon) / 8
+        print(sum(Lat) / batch, sum(Lon) / batch)
+        allLat += sum(Lat) / batch
+        allLon += sum(Lon) / batch
 
     avg_Lat = allLat / count
     avg_Lon = allLon / count
