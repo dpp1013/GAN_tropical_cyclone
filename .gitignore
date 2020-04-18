@@ -2,3 +2,5 @@ venv
 data
 img
 .idea
+*.pk
+*.png
