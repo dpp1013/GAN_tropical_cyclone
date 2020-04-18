@@ -19,7 +19,7 @@ image_size = 32
 in_step = 3  # 监督化，输入步长
 out_step = 1  # 监督化，输出输入步长后的第几个
 
-epochs = 1
+epochs = 2
 batch_size = 64
 lr = 0.0001
 
@@ -197,6 +197,18 @@ if __name__ == "__main__":
     optimizer_G = torch.optim.Adam(generator.parameters(), lr=lr, betas=(b1, b2))
     optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=lr, betas=(b1, b2))
     for epoch in range(epochs):
+        batches_done_list.clear()
+        d_loss_list.clear()
+        g_loss_list.clear()
+        ame_list.clear()
+        mse_list.clear()
+        rmse_list.clear()
+        lat_mae_list.clear()
+        lat_mse_list.clear()
+        lat_rmse_list.clear()
+        lon_mae_list.clear()
+        lon_mse_list.clear()
+        lon_rmse_list.clear()
         for i, (x, y) in enumerate(data_loader):
             x = x.float()
             # x.view(1, in_step, channels, width, height)
