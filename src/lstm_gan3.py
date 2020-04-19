@@ -9,9 +9,6 @@ from torchvision.utils import save_image
 import matplotlib.pyplot as plt
 import math
 
-plt.ion()
-plt.figure(1, [12.8, 9])
-
 Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.DoubleTensor
 
 channels = 3
@@ -158,32 +155,34 @@ def evaluate_trajectory(p_y, y):
     return lat_mae, lat_mse, lat_rmse, lon_mae, lon_mse, lon_rmse
 
 
-batches_done_list = []
-
-d_loss_list = []
-g_loss_list = []
-
-ame_list = []
-mse_list = []
-rmse_list = []
-
-lat_mae_list = []
-lat_mse_list = []
-lat_rmse_list = []
-lon_mae_list = []
-lon_mse_list = []
-lon_rmse_list = []
-
-loss_plt = plt.subplot(2, 2, 1)
-loss_plt.set_title('loss')  # 添加子标题
-
-lat_evaluate_trajectory_plt = plt.subplot(2, 2, 2)
-lat_evaluate_trajectory_plt.set_title('lat trajectory evaluate')  # 添加子标题
-
-lon_evaluate_trajectory_plt = plt.subplot(2, 2, 3)
-lon_evaluate_trajectory_plt.set_title('lon trajectory evaluate')  # 添加子标题
-
 if __name__ == "__main__":
+
+    batches_done_list = []
+
+    d_loss_list = []
+    g_loss_list = []
+
+    ame_list = []
+    mse_list = []
+    rmse_list = []
+
+    lat_mae_list = []
+    lat_mse_list = []
+    lat_rmse_list = []
+    lon_mae_list = []
+    lon_mse_list = []
+    lon_rmse_list = []
+
+    loss_plt = plt.subplot(2, 2, 1)
+    loss_plt.set_title('loss')  # 添加子标题
+
+    lat_evaluate_trajectory_plt = plt.subplot(2, 2, 2)
+    lat_evaluate_trajectory_plt.set_title('lat trajectory evaluate')  # 添加子标题
+
+    lon_evaluate_trajectory_plt = plt.subplot(2, 2, 3)
+    lon_evaluate_trajectory_plt.set_title('lon trajectory evaluate')  # 添加子标题
+    plt.ion()
+    plt.figure(1, [12.8, 9])
     # Data Loader
     data_loader = DataLoader(gen_tran_data_set(), batch_size=batch_size, shuffle=True, )
     # Loss function

@@ -152,7 +152,6 @@ class ConvLSTM(nn.Module):
 
         # return layer_output_list, last_state_list
 
-        print(last_state_list[0][0].shape, layer_output_list[0][0].shape)
         return last_state_list[0][0].view(-1)
 
     def _init_hidden(self, batch_size):
