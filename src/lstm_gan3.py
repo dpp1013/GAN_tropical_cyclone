@@ -1,6 +1,6 @@
 import torch.nn as nn
 from torch.utils.data import Dataset, ConcatDataset, DataLoader
-from src.ConvLSTM import ConvLSTM
+from ConvLSTM import ConvLSTM
 import os
 import numpy as np
 import torch
@@ -16,16 +16,16 @@ image_size = 32
 in_step = 3  # 监督化，输入步长
 out_step = 1  # 监督化，输出输入步长后的第几个
 
-epochs = 2
+epochs = 5
 batch_size = 64
 lr = 0.0001
 
 b1 = 0.5  # adam: decay of first order momentum of gradient
 b2 = 0.999  # adam: decay of first order momentum of gradient
-sample_interval = 1000
+sample_interval = 100
 
-origin_data_dir = r"/Volumes/董萍萍 18655631746/my_data_set/tran_data"
-save_data_dir = r"./img"
+origin_data_dir = r"D:\my_data_set\tran_data"
+save_data_dir = r"D:\my_data_set\imgs\new gen image"
 
 
 class Generator(nn.Module):
@@ -36,7 +36,7 @@ class Generator(nn.Module):
                 input_size=(image_size, image_size),
                 input_dim=channels,
                 out_dim=channels,
-                hidden_dim=[32, 16, 3],
+                hidden_dim=[32, 32, 3],
                 kernel_size=(3, 3),
                 num_layers=3,
                 batch_first=True,
@@ -113,7 +113,7 @@ def gen_tran_data_set():
     result = []
     for file_name in os.listdir(origin_data_dir):
         tf_id = int(file_name.split('_')[2][:4])
-        if tf_id < 1990:
+        if tf_id < 1980:
             result.append(DealDataset(os.path.join(origin_data_dir, file_name)))
             # break
     return ConcatDataset(result)
@@ -123,7 +123,7 @@ def gen_test_data_set():
     result = []
     for file_name in os.listdir(origin_data_dir):
         tf_id = int(file_name.split('_')[2][:4])
-        if tf_id >= 1990:
+        if tf_id >= 1992:
             result.append(DealDataset(os.path.join(origin_data_dir, file_name)))
     return ConcatDataset(result)
 
@@ -257,6 +257,7 @@ if __name__ == "__main__":
             lon_mae_list.append(lon_mae)
             lon_mse_list.append(lon_mse)
             lon_rmse_list.append(lon_rmse)
+
             lat_evaluate_trajectory_plt.plot(batches_done_list, lat_mae_list, c='r', ls='-', marker='+', mec='r',
                                              mfc='w')
             lat_evaluate_trajectory_plt.plot(batches_done_list, lat_mse_list, c='g', ls='-', marker='+', mec='g',

@@ -1,6 +1,6 @@
 import torch.nn as nn
 from torch.utils.data import Dataset, ConcatDataset, DataLoader
-from src.ConvLSTM import ConvLSTM
+from ConvLSTM import ConvLSTM
 import os
 import numpy as np
 import torch
