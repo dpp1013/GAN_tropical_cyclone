@@ -10,13 +10,15 @@ import matplotlib.pyplot as plt
 import math
 
 Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.DoubleTensor
-
+ignoreList = [0, 1, 2, 3, 4, 5, 6, 23, 24, 25, 27, 28, 29, 30, 32, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46,
+              47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72,
+              73, 74, 75, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 117, 118, 119, 120]
 channels = 3
 image_size = 32
 in_step = 3  # 监督化，输入步长
 out_step = 1  # 监督化，输出输入步长后的第几个
 
-epochs = 5
+epochs = 10
 batch_size = 64
 lr = 0.0001
 
@@ -36,7 +38,7 @@ class Generator(nn.Module):
                 input_size=(image_size, image_size),
                 input_dim=channels,
                 out_dim=channels,
-                hidden_dim=[32, 32, 3],
+                hidden_dim=[32, 16, 3],
                 kernel_size=(3, 3),
                 num_layers=3,
                 batch_first=True,
@@ -92,8 +94,8 @@ class DealDataset(Dataset):
             self.data = np.load(self.file)
         mask = np.zeros(self.data.shape)
         mask[:, :, 0, :, :] = 1
-        mask[:, :, 1, 15:16, 16:17] = 1
-        mask[:, :, 2, 15:16, 16:17] = 1
+        mask[:, :, 1, 15:16, 15:16] = 1
+        mask[:, :, 2, 15:16, 15:16] = 1
         self.data = self.data * mask
         return self.data[index][:-1].reshape((in_step, channels, image_size, image_size)), self.data[index][-1].reshape(
             (1, channels, image_size, image_size))
@@ -111,7 +113,10 @@ def gen_data_set():
 
 def gen_tran_data_set():
     result = []
-    for file_name in os.listdir(origin_data_dir):
+    file_name_list = os.listdir(origin_data_dir)
+    file_name_list.sort(key=lambda name: name.split('_')[2][:4])
+    print(file_name_list)
+    for file_name in file_name_list:
         tf_id = int(file_name.split('_')[2][:4])
         if tf_id < 1980:
             result.append(DealDataset(os.path.join(origin_data_dir, file_name)))
@@ -131,8 +136,9 @@ def gen_test_data_set():
 def evaluate_trajectory(p_y, y):
     batch = p_y.shape[0]
     p_y_lat_lon = p_y[:, 1:3, 15:16, 15:16]
+    # print('predict:',p_y_lat_lon)
     y_lat_lon = y.view((y.shape[0], channels, image_size, image_size))[:, 1:3, 15:16, 15:16]
-    # 计算 lat_mae lon_mae
+    # print('real:',y_lat_lon)
     lat_lon = abs(p_y_lat_lon - y_lat_lon)
     lat = lat_lon[:, 0:1, :, :]
     lon = lat_lon[:, 1:2, :, :]
@@ -173,18 +179,18 @@ if __name__ == "__main__":
     lon_mse_list = []
     lon_rmse_list = []
 
-    loss_plt = plt.subplot(2, 2, 1)
-    loss_plt.set_title('loss')  # 添加子标题
-
-    lat_evaluate_trajectory_plt = plt.subplot(2, 2, 2)
-    lat_evaluate_trajectory_plt.set_title('lat trajectory evaluate')  # 添加子标题
-
-    lon_evaluate_trajectory_plt = plt.subplot(2, 2, 3)
-    lon_evaluate_trajectory_plt.set_title('lon trajectory evaluate')  # 添加子标题
-    plt.ion()
-    plt.figure(1, [12.8, 9])
+    # loss_plt = plt.subplot(2, 2, 1)
+    # loss_plt.set_title('loss')  # 添加子标题
+    #
+    # lat_evaluate_trajectory_plt = plt.subplot(2, 2, 2)
+    # lat_evaluate_trajectory_plt.set_title('lat trajectory evaluate')  # 添加子标题
+    #
+    # lon_evaluate_trajectory_plt = plt.subplot(2, 2, 3)
+    # lon_evaluate_trajectory_plt.set_title('lon trajectory evaluate')  # 添加子标题
+    # plt.ion()
+    # plt.figure(1, [12.8, 9])
     # Data Loader
-    data_loader = DataLoader(gen_tran_data_set(), batch_size=batch_size, shuffle=True, )
+    data_loader = DataLoader(gen_tran_data_set(), batch_size=batch_size, shuffle=False, )
     # Loss function
     adversarial_loss = torch.nn.BCELoss()
     # models
@@ -209,6 +215,8 @@ if __name__ == "__main__":
         lon_mse_list.clear()
         lon_rmse_list.clear()
         for i, (x, y) in enumerate(data_loader):
+            # if i in ignoreList:
+            #     continue
             x = x.float()
             # x.view(1, in_step, channels, width, height)
             y = y.float()
@@ -246,9 +254,9 @@ if __name__ == "__main__":
             g_loss_list.append(g_loss.item())
             batches_done_list.append(batches_done)
 
-            loss_plt.plot(batches_done_list, d_loss_list, c='r', ls='-', marker='+', mec='b', mfc='w')
-            loss_plt.plot(batches_done_list, g_loss_list, c='g', ls='-', marker='+', mec='b', mfc='w')
-            loss_plt.legend(['Discriminator', 'Generator'])
+            # loss_plt.plot(batches_done_list, d_loss_list, c='r', ls='-', marker='+', mec='b', mfc='w')
+            # loss_plt.plot(batches_done_list, g_loss_list, c='g', ls='-', marker='+', mec='b', mfc='w')
+            # loss_plt.legend(['Discriminator', 'Generator'])
 
             lat_mae, lat_mse, lat_rmse, lon_mae, lon_mse, lon_rmse = evaluate_trajectory(out, y)
             lat_mae_list.append(lat_mae)
@@ -258,26 +266,21 @@ if __name__ == "__main__":
             lon_mse_list.append(lon_mse)
             lon_rmse_list.append(lon_rmse)
 
-            lat_evaluate_trajectory_plt.plot(batches_done_list, lat_mae_list, c='r', ls='-', marker='+', mec='r',
-                                             mfc='w')
-            lat_evaluate_trajectory_plt.plot(batches_done_list, lat_mse_list, c='g', ls='-', marker='+', mec='g',
-                                             mfc='w')
-            lat_evaluate_trajectory_plt.plot(batches_done_list, lat_rmse_list, c='b', ls='-', marker='+', mec='b',
-                                             mfc='w')
-            lat_evaluate_trajectory_plt.legend(['mae', 'mse', 'rmse'])
-            lon_evaluate_trajectory_plt.plot(batches_done_list, lon_mae_list, c='r', ls='-', marker='+', mec='r',
-                                             mfc='w')
-            lon_evaluate_trajectory_plt.plot(batches_done_list, lon_mse_list, c='g', ls='-', marker='+', mec='g',
-                                             mfc='w')
-            lon_evaluate_trajectory_plt.plot(batches_done_list, lon_rmse_list, c='b', ls='-', marker='+', mec='b',
-                                             mfc='w')
-            lon_evaluate_trajectory_plt.legend(['mae', 'mse', 'rmse'])
+            # lat_evaluate_trajectory_plt.plot(batches_done_list, lat_mae_list, c='r', ls='-', marker='+', mec='r',
+            #                                  mfc='w')
+            # lat_evaluate_trajectory_plt.plot(batches_done_list, lat_mse_list, c='g', ls='-', marker='+', mec='g',
+            #                                  mfc='w')
+            # lat_evaluate_trajectory_plt.plot(batches_done_list, lat_rmse_list, c='b', ls='-', marker='+', mec='b',
+            #                                  mfc='w')
+            # lat_evaluate_trajectory_plt.legend(['mae', 'mse', 'rmse'])
+            # lon_evaluate_trajectory_plt.plot(batches_done_list, lon_mae_list, c='r', ls='-', marker='+', mec='r',
+            #                                  mfc='w')
+            # lon_evaluate_trajectory_plt.plot(batches_done_list, lon_mse_list, c='g', ls='-', marker='+', mec='g',
+            #                                  mfc='w')
+            # lon_evaluate_trajectory_plt.plot(batches_done_list, lon_rmse_list, c='b', ls='-', marker='+', mec='b',
+            #                                  mfc='w')
+            # lon_evaluate_trajectory_plt.legend(['mae', 'mse', 'rmse'])
 
-            # out.shape(64,3,32,32)
-            # y.shape(64,3,32,32)
-            #
-            # out_lat_lon = out[:, 1:3, 15:16, 15:16]
-            # y_lat_lon = y[:, 1:3, 15:16, 15:16]
 
             plt.pause(0.1)
 
@@ -291,5 +294,5 @@ if __name__ == "__main__":
                 np.save(os.path.join(save_data_dir, "%d_real.npy" % batches_done), y.data)
         torch.save(generator, 'generator_%d.pk' % epoch)
         torch.save(discriminator, 'discriminator_%d.pk' % epoch)
-        plt.savefig('process_%d.png' % epoch, dpi=300)
-    plt.show()
+        # plt.savefig('process_%d.png' % epoch, dpi=300)
+    # plt.show()
